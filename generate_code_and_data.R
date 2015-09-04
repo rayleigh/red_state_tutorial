@@ -16,6 +16,7 @@ dat.vot <- dat.vot[ok,]
 dat.vot$year <- recode(dat.vot$file, "'2000-ann'=2000; '2004-ann'=2004; '2008-pew'=2008", as.factor.result=F)
 dat.vot <- dat.vot[dat.vot$year != 2000,]
 dat.vot$ones <- 1
+dat.vot <- dat.vot[dat.vot$year == 2004,]
 
 #Build state data
 dat.stt <- read.table("data/state-stats.dat", header=T, sep="\t")
@@ -27,8 +28,8 @@ dat.stt$"inc2004_cat" <- (rowSums(as.data.frame(cutoff_summary)) + 1)
 
 
 #Build ind income
-setwd("~/Documents/Gelman Research/Red State Tutorial/Red State Tutorial/")
-vote_2004_ind_inc_data <- summarize(group_by(dat.vot, inc), num_votes = sum(ones), rep_votes = sum(rvotes))
+setwd("~/Documents/Gelman Research/red_state_tutorial/Red State Tutorial/")
+vote_2004_ind_inc_data <- summarize(group_by(dat.vot, inc), num_votes = sum(ones), rep_votes = sum(rvote))
 vote_2004_ind_inc_data$inc <- factor(vote_2004_ind_inc_data$inc)
 
 ind_inc_2004_stan_obj <- stan_lmer(cbind(rep_votes, num_votes - rep_votes) ~ inc, data = vote_2004_ind_inc_data, file = "regression_by_inc.stan", family = "binomial")
@@ -36,7 +37,7 @@ stan_2004_ind_inc_data <- ind_inc_2004_stan_obj$data
 save(stan_2004_ind_inc_data, file = "Data/stan_inc_regression_data.Rdata")
 
 #Build state income
-setwd("~/Documents/Gelman Research/Red State Tutorial/Red State Tutorial/")
+setwd("~/Documents/Gelman Research/red_state_tutorial/Red State Tutorial/")
 
 vote_2004_state_inc_data <- summarize(group_by(dat.stt, inc2004_cat), 
                                       num_votes = sum(vote2004), 
@@ -49,7 +50,7 @@ stan_2004_state_inc_data <- state_inc_2004_stan_obj$data
 save(stan_2004_ind_inc_data, file = "Data/stan_state_regression_data.Rdata")
 
 #Build combined income
-setwd("~/Documents/Gelman Research/Red State Tutorial/Red State Tutorial/")
+setwd("~/Documents/Gelman Research/red_state_tutorial/Red State Tutorial/")
 dat.stt$stt <- 1:51
 vote_2004_state_and_ind_inc_data <- merge(x = dat.vot[, c("stt", "rvote", "inc", "ones")], y = dat.stt[, c("stt", "inc2004_cat")], by = "stt", all.x = T)
 vote_2004_state_and_ind_inc_data <- rename(vote_2004_state_and_ind_inc_data, ind_inc = inc, state_inc = inc2004_cat)
