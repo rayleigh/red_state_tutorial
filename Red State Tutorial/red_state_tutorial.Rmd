@@ -1,5 +1,6 @@
 ---
 title: "Red State Tutorial"
+graphics: yes
 output: pdf_document
 ---
 
@@ -38,7 +39,7 @@ output: pdf_document
 
 For decades, the Democrats have been viewed as the party of the poor, with the Republicans representing the rich. Recent presidential elections, however, have shown a reverse pattern, with Democrats performing well in the richer blue states in the northeast and coasts, and Republicans dominating in the red states in the middle of the country and the south.
 
-The purpose of this homework assignment, then, is to use Stan and hierarchical models to understand this seeming paradox. For our purposes, we will use data from the 2004 election. 
+The purpose of this homework assignment, then, is to use Stan and hierarchical models to understand this "paradox". For our purposes, we will use data from the 2004 election. 
 
 # Preliminaries
 
@@ -56,7 +57,7 @@ For Macs, the command will be:
 setwd("~/Desktop/Red State Tutorial")
 ```
 
-In addition, you should also run the following commands in your R Session to use RStan and take full advantage of your computer's processing power. It'll also add a helper function routine.
+In addition, you should also run the following commands in your R Session to use RStan and take full advantage of your computer's processing power. It'll also add some helper functions that we'll use later.
 
 ```{r results = 'hide', message = F}
 library(rstan)
@@ -71,7 +72,7 @@ Finally, if you'd like to run the entire code for each scenario, check the appen
 
 Let's first try to analyze the data and see if this "paradox" exists. There are two parts. The first is that the Democrats are the "party of the poor". What do we mean when we say that? Well, we expect that people with lower income are more likely to vote Democrat and people with higher income are more likely to vote Republican.
 
-Is this the case? Let's use the National Annenberg 2004 Election Survey data to explore whether income is correlated to the likelihood of voting Republican. In this data set, income is not a continuous variable, but divided into five categories: \$0 - \$20,000, \$20,000 - \$40,000, \$40,000 - \$75,000, \$75,000 - \$150,000, and \$150,000+. Looking at the data first, we see:
+Is this the case? Let's use the National Annenberg 2004 Election Survey data to explore whether income is correlated to the likelihood of voting Republican. In this data set, income is not a continuous variable, but divided into five categories: \$0 - \$20,000, \$20,000 - \$40,000, \$40,000 - \$75,000, \$75,000 - \$150,000, and \$150,000+. Looking at the data, we see:
 
 ```{r Annenberg data plot, echo = F, message = F}
 library(car)
@@ -103,7 +104,7 @@ bty="n", fill = c("darkblue", "red"))
 
 While it looks like there are proportionally fewer Republican voters for those in the lowest income level and proportionally more Republican voters for those in the highest income level, the trend isn't fully clear.
 
-So, let's analyze it. We're trying to predict the number of Republican voters given one's income level. We'll be using a binomial logistic regression because we can think of the outcome variable as 1 - Republican voter or 0 - Democrat voter (we'll ignore third party voters to keep the analysis simple). We could think of the outcome variable the other way (0 - Republican, 1 - Democrat), but we won't for this tutorial.
+So, let's analyze it. We're trying to predict the likelihood of voting Republican for a given income level based on the number of Republican voters for each income level. Because we'll ignore third party voters and think of the outcome as voting Republican or voting Democrat, we'll be using a binomial logistic regression model to do so. "Success" in our model will be voting Republican though we could have considered "success" as voting Democrat.
 
 On the other side, income level is a categorical variable and not a continous variable. As a result, the regression coefficients for income level we're looking for will tell us the difference between one level and any other level. Because we're trying to see if the likelihood of voting Republican or the number of Republican voter increases when income increases, let's use the first or lowest income level as the level to compare all other levels to.
 
@@ -118,7 +119,8 @@ stan_2004_ind_inc_fit_obj <- stan(file = "Stan/regression_by_one_var.stan",
                                   model_name = "Republican vote by individual income")
 ```
 
-The stan function call returns a Stanfit object. To read more about it, you can visit <http://mc-stan.org/interfaces/rstan.html> and click on the RStan Manual and Vignette link. For us, we'll focus on the summary function provided because it'll allow us to find our regression coefficients. In the Stan code, the regression coefficients for income level are named "b\_inc2", "b\_inc3", "b\_inc4", and "b\_inc5", one for each between two and five. There isn't a regression coefficient for the first income level because again, our other regression coefficients are showing us the difference in outcome between the first income level and them. However, for our simple model, we are in some sense capturing the first income level's effect in our Intercept term. So, let's pull out these coefficients and the 95% bounds for their credible intervals, which is a feature of Bayesian analysis. We want the 95% bounds for credible intervals because if our model and its assumptions are correct, there's a 95% chance the emperical coefficients fall in the intervals.
+The stan function call returns a Stanfit object. To read more about it, you can visit <http://mc-stan.org/interfaces/rstan.html> and click on the RStan Manual and Vignette link. For us, we'll focus on the summary function provided because it'll allow us to access our regression coefficients. In the Stan code, the regression coefficients for income level are named "b\_inc2", "b\_inc3", "b\_inc4", and "b\_inc5", one for each level between two and five. There isn't a regression coefficient for the first income level because again, our other regression coefficients are showing us the difference in outcome between the first income level and them. However, for our simple model, we are in some sense capturing the first income level's effect in our Intercept term. 
+So, let's pull out the mean of these coefficients and the 95% bounds for their credible intervals, which is a feature of Bayesian analysis. We'll plot these 95% credible intervals because if our model and its assumptions are correct, there's a 95% chance the credible intervals capture the emperical coefficients' means.
 
 ```{r Individual Income Get Results, results = "hide", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 #Pull out the regression coefficient and the information needed for a credible interval
@@ -129,7 +131,7 @@ ind_inc_regression_data <-
                                              interested_regression_cols]
 ```
 
-We didn't have to save off the information in order to plot it, but we did so to make the plotting code cleaner. 
+We didn't have to save off the information in order to plot it, but we did so to make the plotting code cleaner. Also, we could pull out the median or any other point estimate of these coefficients and any other credible interval bounds, but the mean and the 95% bounds are provided to us in the summary call by default. However, if we had pulled point estimates of a certain type and the n% credible interval bounds for these estimates, our interpretation of the credible intervals would change to there being a n% chance the credible intervals capture the emperical coefficients of that type of point estimate.
 
 ```{r Individual Income Plot Results, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 #Plot the regression coefficients with bars
@@ -148,11 +150,11 @@ You'll notice in the plot that the coefficents range from -0.5 to 0.5. Clearly, 
 plot(seq(-10, 10, 0.01), plogis(seq(-10, 10, 0.01)), xlab = "", ylab = "", main = "Inverse logit")
 ```
 
-In our plot, it is clear that going from a lower income category to a higher income category leads to higher coefficients. As we can see on the untransformed inverse logit plot, higher coefficients mean higher probabilities of voting Republican though how much of a difference depends on what two points you're comparing. Thus, looking at the plot, it does look like an increase in an individual's income is correlated to an increase in voting Republican and that the Democrats are the party of the poor.
+In our plot, it is clear that going from a lower income category to a higher income category leads to higher coefficients. As we can see on the untransformed inverse logit plot, higher coefficients mean higher probabilities of voting Republican though how much of a difference depends on what two points you're comparing. Thus, when we look at the coefficients plot, it does look like an increase in an individual's income is correlated to an increase in voting Republican. So, there's support that the Democrats are the party of the poor.
 
-However, the other part of the paradox is that the Democrats are the party of the rich states. In other words, are states with higher average income more likely to vote Democrat? We again use the binomial logistic regression model from before with the same outcome variable. However, instead of using the 2004 Annenberg Survey data, we'll be using the Census CPS data. Thus, while our state average income level variable will still have five categories, we'll divide it so that there are the same number of states in each category. The categories are: \$0 - \$39,000, \$39,000 - \$43,003, \$43,003 - \$44,476, \$44,476 - \$50,614 and \$50,614+.
+However, the other part of the paradox is that the Democrats are the party of the rich states. In other words, are states with higher average income more likely to vote Democrat? We again use the binomial logistic regression model from before with the same definition of "success". However, instead of using the 2004 Annenberg Survey data, we'll be using the Census CPS data. Thus, while our state average income level variable will still have five categories, we'll divide it so that there are the same number of states in each category. The categories are: \$0 - \$39,000, \$39,000 - \$43,003, \$43,003 - \$44,476, \$44,476 - \$50,614 and \$50,614+.
 
-Because our model is essentially the same as before, we can reuse our Stan code from before. However, we'll be feeding into it a different data set.
+Because our model is essentially the same as before, we can reuse our Stan code from before. However, we'll be feeding the code a different data set.
 
 ```{r State Income Stan, results = "hold", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 #Get the data and the R package we'll be using for the analysis
@@ -164,7 +166,7 @@ stan_2004_state_inc_fit_obj <- stan(file = "Stan/regression_by_one_var.stan",
                                     model_name = "Republican vote by state average income")
 ```
 
-We'll again summarize the data as before. Only this time, we'll be doing it using a function instead of looking at the Stanfit object itself.
+We'll again summarize the data in the same way as before. Only this time, we'll be doing it using a function instead of looking at the Stanfit object itself.
 
 ```{r State Income Extract, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 #Pull out the regression coefficient and the information needed for a confidence interval
@@ -173,7 +175,7 @@ state_inc_regression_data <- extract_results_from_stanfit_object(interested_regr
                                                                stan_2004_state_inc_fit_obj)
 ```
 
-And now, we'll plot it, but again with a function wrapping the previous code.
+And now, we'll plot it, but we'll again use a function that's wrapping the code called previously.
 
 ```{R State Income Plot, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 #Plot the coefficients and their 95% credible interval bounds
@@ -189,7 +191,7 @@ All in all, we can see that as an individual's income increases, the likelihood 
 
 # Understanding this "paradox"
 
-For our first attempt to understand this paradox, what if we treated the state's average income and individual's income level as predictor variables and added their effects together? Our outcome variable is still the same as before (0 - Democrat and 1 - Republican) so we'll use a binomial logistic regression as before. On the other hand, we now have two categorical variables. Still, for each variable, we'll compare the outcome of one level to those of all other levels. So, let's run the Stan code.
+For our first attempt to understand this paradox, what if we treated the state's average income level and individual's income level as predictor variables and added their effects together? Our outcome is still the same as before so we'll use a binomial logistic regression as before. On the other hand, we now have two categorical variables. Still, for each variable, we'll compare the outcome of one level to those of all other levels. So, let's run the Stan code.
 
 ```{r Ind and State Income Stan, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
 #Get the data we'll be using for the analysis
@@ -202,7 +204,7 @@ stan_2004_state_and_ind_inc_fit_obj <- stan(file = "Stan/regression_by_state_inc
                                               "Republican vote by state and ind income")
 ```
 
-Again, let us pull the results. Our individual income level regression coefficients are  "b\_ind\_inc2", "b\_ind\_inc3", "b\_ind\_inc4", and "b\_ind\_inc5" and our state average income level regression coefficients are "b\_state\_inc2", "b\_state\_inc3", "b\_state\_inc4", and "b\_state\_inc5". We don't have a regression coefficient for the first or lowest level because again, we want to see if increasing income level corrolates to increasing likelihood of voting Republican. However, the intercept now represents being in the lowest individual income level and lowest state average income level.
+Again, let's pull the results. Our individual income level regression coefficients are  "b\_ind\_inc2", "b\_ind\_inc3", "b\_ind\_inc4", and "b\_ind\_inc5" and our state average income level regression coefficients are "b\_state\_inc2", "b\_state\_inc3", "b\_state\_inc4", and "b\_state\_inc5". We don't have regression coefficients for the first or lowest levels because again, we've set our model to use the lowest level as the reference categories for comparisons. However, the intercept in some sense now represents the effect of the lowest individual income level and lowest state average income level on voting Republican.
 
 ```{r Ind and State Income Extract, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
 #Pull out the regression coefficient and the information needed for a credible interval
@@ -222,7 +224,7 @@ plot_coefficients_with_credible_intervals(plot_title,
                                           state_and_ind_inc_regression_data)
 ```
 
-From the plot, it looks like the regression coefficients for individual income level increase as income level increase whereas regression coefficients for state income level decrease as income level increase. Because our model is linear, one way to interpret these regression coefficients is that:
+From the plot, it looks like the regression coefficients for individual income level increase as income level increases whereas the regression coefficients for state income level decrease as income level increases. Because our model is linear on the logit scale, one way to interpret these regression coefficients is that:
 
 1. For a given individual income level, the likelihood of voting Republican decreases as the state average income increases.
 
@@ -242,7 +244,7 @@ We can very easily express the first point in a hierarchical or mixed effects mo
 
 So, let's build on this idea. If we can vary the intercept by state, why not also vary the slope associated with an individual's income by state? (It doesn't really make sense to vary the slope associated with a state's average income by state.) In other words, are all individuals with higher income more likely to vote Republican or does this vary by state?
 
-Let's conduct this analysis. Our outcome variable will still be the same so we'll still use a binomial logistic regression model. 
+Let's conduct this analysis. Our outcome will still be the same so we'll still use a binomial logistic regression model. 
 
 ```{r Ind Income by state Stan, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
 load("Data/stan_state_and_inc_regression_data.Rdata")
@@ -290,7 +292,7 @@ add_state_to_plot("OH", oh_regression_rows, color = "green",
 
 Huh. It looks like the change in coefficients isn't as much as before. What about Conneticut, the rich state?
 
-```{r Ind Income by state Plot CT, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH', 'Ind Income by state Plot CT'), results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50), echo = 9:10}
+```{r Ind Income by state Plot CT, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH', 'Ind Income by state Plot CT'), results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50), echo = 9:10, fig.pos="!H"}
 #Plot CT
 add_state_to_plot("CT", ct_regression_rows, color = "orange", 
                   state_and_inc_regression_data[ct_regression_rows,])
@@ -299,14 +301,14 @@ add_state_to_plot("CT", ct_regression_rows, color = "orange",
 So, it seems that while individuals with higher income are more likely to vote Republican, this trend is smaller in richer states. These states are more likely to vote Democrat because there's less support across income categories. There isn't a paradox.
 
 #Conclusion
-Let's take a step back and see what we've learned. We sought to understand the paradox that even though the Democrats claim to be the party of the poor, states with higher average income tended to swing Democrat. When we analyzed the 2004 National Election Annenberg Survey data using a binomial logistic regression on individual income level and whether he/she voted Republican, we did indeed see on our coefficients box plots that the likelihood of voting Republican increases as income level increases. On the other hand, when we analyzed the Census CPS data using a binomial logistic regression on state average income level and the Republican vote share, we saw on our coefficients box plots that the likelihood of voting Republican decreases as income level increases. So, we confirmed that the paradox seemed to exist.
+Let's take a step back and see what we've learned. We sought to understand the paradox that even though the Democrats claim to be the party of the poor, states with higher average income tended to swing Democrat. When we analyzed the 2004 National Election Annenberg Survey data using a binomial logistic regression on individual income level and the number of Republican voters, we did indeed see on our coefficients box plots that the likelihood of voting Republican increases as income level increases. On the other hand, when we analyzed the Census CPS data using a binomial logistic regression on state average income level and the Republican vote share, we saw on our coefficients box plots that the likelihood of voting Republican decreases as average income level increases. So, we confirmed that the paradox seemed to exist.
 
 When we sought to decipher the paradox, we saw that using individual income level and state average income level as predictors model didn't help. Instead, it was through a hierarchical regression model in which we allowed the intercept and individual income to vary by state. In our coefficient regression plots, we saw that while individuals with higher income are more likely to vote Republican, the effect is smaller in states with higher average income. This explained our paradox.
 
 So, if you enjoy doing this analysis and would like to see this analysis done on other elections, you can read Andrew Gelman, Boris Shor, Joseph Bafumi, and David Park's *Rich State, Poor State, Red State, Blue State: What’s the Matter with Connecticut?* (from which this tutorial is derived).
 Or, you could do it yourself and compare your results to their paper.
 
-In any case, you've had an opportunity to go over simple regression and hierarchical regression.
+In any case, you've had an opportunity to go over a few simple regression models and see a hierarchical regression model.
 
 #Appendix
 ##Code for Individual Income Model
