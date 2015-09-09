@@ -1,8 +1,19 @@
 ---
 title: "Red State Tutorial"
 graphics: yes
-output: pdf_document
+output: 
+  html_document:
+    toc: true
+    toc_depth: 1
 ---
+
+```{r, include = F}
+library(knitr)
+opts_chunk$set(fig.align = "center", 
+               message = F, 
+               tidy=TRUE, 
+               tidy.opts=list(width.cutoff=50))
+```
 
 # Introduction
 > I never said all Democrats are saloon-keepers. What I said is that all saloonkeepers
@@ -59,7 +70,7 @@ setwd("~/Desktop/Red State Tutorial")
 
 In addition, you should also run the following commands in your R Session to use RStan and take full advantage of your computer's processing power. It'll also add some helper functions that we'll use later.
 
-```{r results = 'hide', message = F}
+```{r results = 'hide'}
 library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
@@ -74,15 +85,12 @@ Let's first try to analyze the data and see if this "paradox" exists. There are 
 
 Is this the case? Let's use the National Annenberg 2004 Election Survey data to explore whether income is correlated to the likelihood of voting Republican. In this data set, income is not a continuous variable, but divided into five categories: \$0 - \$20,000, \$20,000 - \$40,000, \$40,000 - \$75,000, \$75,000 - \$150,000, and \$150,000+. Looking at the data, we see:
 
-```{r Annenberg data plot, echo = F, message = F}
+```{r Annenberg data plot, echo = F}
 library(car)
 library(dplyr)
 
-#Get and process raw data
-setwd("~/Documents/Gelman Research/Replication/Original Research/")
-
 #Build individual data
-dat.vot <- read.table("data/votechoice2000-04-08.dat", header=T, sep="\t")
+dat.vot <- read.table("Data/votechoice2000-04-08.dat", header=T, sep="\t")
 dat.vot$weight[is.na(dat.vot$weight)] <- 1
 ok <- apply(is.na(dat.vot[1:8]), 1, sum)==0 & 
   (dat.vot$cit==1 | is.na(dat.vot$cit)) & 
@@ -92,7 +100,6 @@ dat.vot$year <- recode(dat.vot$file, "'2000-ann'=2000; '2004-ann'=2004; '2008-pe
 dat.vot <- dat.vot[dat.vot$year != 2000,]
 dat.vot$ones <- 1
 
-setwd("~/Documents/Gelman Research/red_state_tutorial/Red State Tutorial/")
 vote_2004_ind_inc_data <- summarize(group_by(dat.vot[dat.vot$year == 2004,], inc), num_votes = sum(ones), rep_votes = sum(rvote))
 
 barplot(vote_2004_ind_inc_data$num_votes, main = "Voters by Income", xlab = "Income Level", ylab = "Number of Individuals", col = "darkblue")
@@ -110,7 +117,7 @@ On the other side, income level is a categorical variable and not a continous va
 
 So, now that we know our model, we can write our Stan code and process our data for the Stan code. Fortunately, the Stan code and data for that model is provided for you so all you have to do is run it in your R session:
 
-```{r Individual Income Stan, results = "hide", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r Individual Income Stan, results = "hide"}
 load("Data/stan_inc_regression_data.Rdata")
 
 #Use Stan to run the regression model
@@ -122,7 +129,7 @@ stan_2004_ind_inc_fit_obj <- stan(file = "Stan/regression_by_one_var.stan",
 The stan function call returns a Stanfit object. To read more about it, you can visit <http://mc-stan.org/interfaces/rstan.html> and click on the RStan Manual and Vignette link. For us, we'll focus on the summary function provided because it'll allow us to access our regression coefficients. In the Stan code, the regression coefficients for income level are named "b\_inc2", "b\_inc3", "b\_inc4", and "b\_inc5", one for each level between two and five. There isn't a regression coefficient for the first income level because again, our other regression coefficients are showing us the difference in outcome between the first income level and them. However, for our simple model, we are in some sense capturing the first income level's effect in our Intercept term. 
 So, let's pull out the mean of these coefficients and the 95% bounds for their credible intervals, which is a feature of Bayesian analysis. We'll plot these 95% credible intervals because if our model and its assumptions are correct, there's a 95% chance the credible intervals capture the emperical coefficients' means.
 
-```{r Individual Income Get Results, results = "hide", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r Individual Income Get Results, results = "hide"}
 #Pull out the regression coefficient and the information needed for a credible interval
 interested_regression_rows <- c("Intercept", "b_inc2", "b_inc3", "b_inc4", "b_inc5")
 interested_regression_cols <- c("mean", "2.5%", "97.5%")
@@ -133,7 +140,7 @@ ind_inc_regression_data <-
 
 We didn't have to save off the information in order to plot it, but we did so to make the plotting code cleaner. Also, we could pull out the median or any other point estimate of these coefficients and any other credible interval bounds, but the mean and the 95% bounds are provided to us in the summary call by default. However, if we had pulled point estimates of a certain type and the n% credible interval bounds for these estimates, our interpretation of the credible intervals would change to there being a n% chance the credible intervals capture the emperical coefficients of that type of point estimate.
 
-```{r Individual Income Plot Results, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r Individual Income Plot Results}
 #Plot the regression coefficients with bars
 plot(ind_inc_regression_data[, "mean"],
     ylim=range(c(ind_inc_regression_data[, "2.5%"], ind_inc_regression_data[, "97.5%"])),
@@ -156,7 +163,7 @@ However, the other part of the paradox is that the Democrats are the party of th
 
 Because our model is essentially the same as before, we can reuse our Stan code from before. However, we'll be feeding the code a different data set.
 
-```{r State Income Stan, results = "hold", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r State Income Stan, results = "hide"}
 #Get the data and the R package we'll be using for the analysis
 load("Data/stan_state_regression_data.Rdata")
 
@@ -168,7 +175,7 @@ stan_2004_state_inc_fit_obj <- stan(file = "Stan/regression_by_one_var.stan",
 
 We'll again summarize the data in the same way as before. Only this time, we'll be doing it using a function instead of looking at the Stanfit object itself.
 
-```{r State Income Extract, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r State Income Extract}
 #Pull out the regression coefficient and the information needed for a confidence interval
 interested_regression_rows <- c("Intercept", "b_inc2", "b_inc3", "b_inc4", "b_inc5")
 state_inc_regression_data <- extract_results_from_stanfit_object(interested_regression_rows, 
@@ -177,7 +184,7 @@ state_inc_regression_data <- extract_results_from_stanfit_object(interested_regr
 
 And now, we'll plot it, but we'll again use a function that's wrapping the code called previously.
 
-```{R State Income Plot, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{R State Income Plot}
 #Plot the coefficients and their 95% credible interval bounds
 plot_title = "Estimated coefficients for state income level"
 plot_coefficients_with_credible_intervals(plot_title, 
@@ -193,7 +200,7 @@ All in all, we can see that as an individual's income increases, the likelihood 
 
 For our first attempt to understand this paradox, what if we treated the state's average income level and individual's income level as predictor variables and added their effects together? Our outcome is still the same as before so we'll use a binomial logistic regression as before. On the other hand, we now have two categorical variables. Still, for each variable, we'll compare the outcome of one level to those of all other levels. So, let's run the Stan code.
 
-```{r Ind and State Income Stan, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind and State Income Stan, results = "hide"}
 #Get the data we'll be using for the analysis
 load("Data/stan_state_inc_and_ind_inc_regression_data.Rdata")
 
@@ -206,7 +213,7 @@ stan_2004_state_and_ind_inc_fit_obj <- stan(file = "Stan/regression_by_state_inc
 
 Again, let's pull the results. Our individual income level regression coefficients are  "b\_ind\_inc2", "b\_ind\_inc3", "b\_ind\_inc4", and "b\_ind\_inc5" and our state average income level regression coefficients are "b\_state\_inc2", "b\_state\_inc3", "b\_state\_inc4", and "b\_state\_inc5". We don't have regression coefficients for the first or lowest levels because again, we've set our model to use the lowest level as the reference categories for comparisons. However, the intercept in some sense now represents the effect of the lowest individual income level and lowest state average income level on voting Republican.
 
-```{r Ind and State Income Extract, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind and State Income Extract, results = "hide"}
 #Pull out the regression coefficient and the information needed for a credible interval
 interested_regression_rows <- c("Intercept", "b_ind_inc2", "b_ind_inc3", "b_ind_inc4", "b_ind_inc5", "b_state_inc2", "b_state_inc3", "b_state_inc4", "b_state_inc5")
 state_and_ind_inc_regression_data <- 
@@ -216,7 +223,7 @@ state_and_ind_inc_regression_data <-
 
 Now, let us plot these results.
 
-```{r Ind and State Income Plot, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind and State Income Plot, results = "hold"}
 #Plot the coefficients and their 95% credible interval bounds
 plot_title = "Estimated coefficients for state and individual income level"
 plot_coefficients_with_credible_intervals(plot_title, 
@@ -246,7 +253,7 @@ So, let's build on this idea. If we can vary the intercept by state, why not als
 
 Let's conduct this analysis. Our outcome will still be the same so we'll still use a binomial logistic regression model. 
 
-```{r Ind Income by state Stan, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind Income by state Stan, results = "hide"}
 load("Data/stan_state_and_inc_regression_data.Rdata")
 
 #Use Stan to run the regression model
@@ -258,7 +265,7 @@ stan_2004_state_and_inc_fit_obj <- stan(file = model_file,
 
 One way to interpret our results is to look at the effect of income for a given state. So, let's focus on Mississippi, Ohio, and Conneticut because they represent a poor, middle-income, and rich state respectively.
 
-```{r Ind Income by state Extract, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind Income by state Extract, results = "hide"}
 #Pull out the regression coefficient and the information needed for a confidence interval
 ct_regression_rows <- generate_state_labels(6)
 oh_regression_rows <- generate_state_labels(34)
@@ -271,7 +278,7 @@ state_and_inc_regression_data <- extract_results_from_stanfit_object(
 
 Let's plot the regression coefficients of Mississippi first.
 
-```{r Ind Income by state Plot MS, results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind Income by state Plot MS, results = "hold"}
 #Plot the regression coefficients with bars
 #Plot Mississippi first
 plot_title = "Estimated coefficient for individual income level by state"
@@ -284,7 +291,7 @@ text(5, state_and_inc_regression_data[ms_regression_rows[5], "mean"], labels = c
 
 It still looks like the individual income graph from before. What about Ohio, the middle-income state?
 
-```{r Ind Income by state Plot OH, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH'), results = "hold", message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50), echo = 7:8}
+```{r Ind Income by state Plot OH, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH'), results = "hold", echo = 7:8}
 #Plot Ohio
 add_state_to_plot("OH", oh_regression_rows, color = "green", 
                   state_and_inc_regression_data[oh_regression_rows,])
@@ -292,7 +299,7 @@ add_state_to_plot("OH", oh_regression_rows, color = "green",
 
 Huh. It looks like the change in coefficients isn't as much as before. What about Conneticut, the rich state?
 
-```{r Ind Income by state Plot CT, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH', 'Ind Income by state Plot CT'), results = "hold", message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50), echo = 9:10, fig.pos="!H"}
+```{r Ind Income by state Plot CT, ref.label = c('Ind Income by state Plot MS', 'Ind Income by state Plot OH', 'Ind Income by state Plot CT'), results = "hold", echo = 9:10}
 #Plot CT
 add_state_to_plot("CT", ct_regression_rows, color = "orange", 
                   state_and_inc_regression_data[ct_regression_rows,])
@@ -313,7 +320,7 @@ In any case, you've had an opportunity to go over a few simple regression models
 #Appendix
 ##Code for Individual Income Model
 
-```{r Individual Income Appendix, eval = F, message = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r Individual Income Appendix, eval = F}
 #Get the data and the R package we'll be using for the analysis
 library(rstan)
 options(mc.cores = parallel::detectCores())
@@ -341,7 +348,7 @@ plot_coefficients_with_credible_intervals(plot_title,
 
 ##Code for State Income Model
 
-```{r State Income Appendix, eval = F, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r State Income Appendix, eval = F}
 #Get the data and the R package we'll be using for the analysis
 library(rstan)
 options(mc.cores = parallel::detectCores())
@@ -370,7 +377,7 @@ plot_coefficients_with_credible_intervals(plot_title,
 
 ##Code for State and Individual Income Model
 
-```{r Ind and State Income Appendix, eval = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind and State Income Appendix, eval = F}
 #Get the data and the R package we'll be using for the analysis
 library(rstan)
 options(mc.cores = parallel::detectCores())
@@ -401,7 +408,7 @@ plot_coefficients_with_credible_intervals(plot_title,
 
 ##Code for Hierarchical Model for Individual Income by State
 
-```{r Ind Income by state Appendix, eval = F, message = F, tidy=TRUE,  tidy.opts=list(width.cutoff=50)}
+```{r Ind Income by state Appendix, eval = F}
 #Get the data and the R package we'll be using for the analysis
 library(rstan)
 options(mc.cores = parallel::detectCores())
