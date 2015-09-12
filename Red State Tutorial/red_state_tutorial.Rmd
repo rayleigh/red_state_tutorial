@@ -264,7 +264,7 @@ We'll again summarize the data in the same way as before. Only this time, we'll 
 
 And now, we'll plot it, but we'll again use a function that's wrapping the code called previously.
 
-```{R State Income Plot, fig.width=4}
+```{R State Income Plot, fig.width=4, results="hold"}
 plot_data2 <- make_plot_data(model2, coef_nms, stat_nms)
 plot_estimates(plot_data2) + 
   ggtitle("State Income Level \ncoefficients & 95% intervals")
@@ -368,7 +368,7 @@ From this model we obtain estimates for each of the states. Let's focus on
 Mississippi, Ohio, and Conneticut because they represent a poor, middle-income,
 and rich state, respectively.
 
-```{r Ind Income by state Extract, results = "hide"}
+```{r Ind Income by state Plot}
 # Pull out the means and intervals
 state_nums <- c(MS = 25, OH = 34, CT = 6)
 coef_ct <- generate_state_labels(state_nums["CT"])
@@ -377,6 +377,7 @@ coef_ms <- generate_state_labels(state_nums["MS"])
 plot_data4 <- rbind(make_plot_data(model4, coef_ms, stat_nms), 
                     make_plot_data(model4, coef_oh, stat_nms), 
                     make_plot_data(model4, coef_ct, stat_nms))
+# Add variables indicating the state and income level
 plot_data4$state <- gl(3, 5, labels = names(state_nums))
 plot_data4$inc <- 1:5
 
