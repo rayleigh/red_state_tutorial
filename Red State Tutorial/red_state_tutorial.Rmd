@@ -78,43 +78,39 @@ setwd("~/Desktop/Red State Tutorial")
 ```
 
 In addition, you should also run the following commands in your R Session, which
-will load RStan, set it up to take full advantage of your computer's
-processing power, and load some helper functions that we'll use later.
+will load RStan, set it up to take full advantage of your computer's processing
+power, and load a few packages and helper functions that we'll use later.
 
 ```{r results = 'hide'}
-pkgs <- c("car", "dplyr", "ggplot2", "reshape2")
+pkgs <- c("car", "dplyr", "ggplot2")
 inst <- which(!pkgs %in% installed.packages()[,"Package"])
 if (length(inst)) install.packages(pkgs[inst])
 
+library(car)
+library(dplyr)
+library(ggplot2)
 library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
+theme_set(theme_classic()) #Set default theme for ggplot2
 source("red_state_tutorial_helper_functions.R")
 ```
 
 
 #Visualizing the "Paradox"
 
-Let's first try to analyze the data and see if this "paradox" exists. There are
-two parts. The first is that the Democrats are the "party of the poor". What do
-we mean when we say that? Well, we expect that people with lower income are more
-likely to vote Democrat and people with higher income are more likely to vote
-Republican. Is this the case?
+There are two parts to this potential paradox. The first is that the Democrats
+are the "party of the poor". What do we mean when we say that? Well, we expect
+that people with lower income are more likely to vote Democrat and people with
+higher income are more likely to vote Republican. Is this the case?
 
-We'll use data from the National Annenberg 2004 Election Survey to
-explore whether income is positively correlated with voting Republican. In
-this data set, income is not a continuous variable, but divided into five
-categories: \$0 - \$20,000, \$20,000 - \$40,000, \$40,000 - \$75,000, \$75,000 -
-\$150,000, and \$150,000+. Looking at the data, we see:
+We'll use data from the National Annenberg 2004 Election Survey to explore
+whether income is positively correlated with voting Republican. In this data
+set, income is not a continuous variable, but divided into five categories: \$0
+- \$20,000, \$20,000 - \$40,000, \$40,000 - \$75,000, \$75,000 - \$150,000, and
+\$150,000+. Looking at the data, we see:
 
 ```{r Annenberg data plot, echo = F, fig.width = 9, fig.height = 4}
-library(car)
-library(dplyr)
-library(ggplot2)
-
-#Set default theme for ggplot2
-theme_set(theme_classic())
-
 #Build individual data
 dat.vot <- read.table("Data/votechoice2000-04-08.dat", header=T, sep="\t")
 dat.vot$weight[is.na(dat.vot$weight)] <- 1
@@ -148,9 +144,10 @@ graph_data
 
 The red and blue points in the plot show the proportion of the respondents in
 each income category who voted Republican and Democrat, respectively. The bars
-below show the proportion of the respondents in each income category (i.e. the 
+below show the proportion of all respondents in each income category (i.e. the 
 distribution of income level in the sample). It looks like the proportion of 
 Republican votes increases with each income level. 
+
 
 For simplicity we're ignoring third party voters, which means that we can 
 make a binary variable that is 0 if the respondent voted Democrat and 1 if 
@@ -160,15 +157,15 @@ with income level as the predictor of voting Republican.
 Because income is a categorical variable with five levels, we estimate a 
 regression coefficient for four of the levels and interpret the coefficients 
 relative to the omitted reference level. The intercept of the model can then
-also be interpreted as the coefficient on the lowest level (alternatively we can
-think of it as omitting the intercept and estimating a coefficient for all five
+also be interpreted as representing the lowest income level (alternatively we can
+think of omitting the intercept and estimating a coefficient for all five
 of the levels). We're trying to see if the likelihood of voting Republican
 increases when income increases, so it makes sense to use the first (i.e.
 lowest) income level as the reference level.
 
-Now that we know our model, we can use Stan to estimate it. 
-For this example, the Stan code and data for the model are
-provided, so all you have to do is run the model:
+Now that we know our model, we can use Stan to estimate it. For this example,
+the Stan code and data for the model are provided, so all you have to do is run
+the model:
 
 ```{r Individual Income Stan, results = "hide"}
 load("Data/stan_inc_regression_data.Rdata")
@@ -212,9 +209,9 @@ You'll notice in the plot that the minimum value is a bit less than $-0.5$ and
 the largest is a bit less than 1. Clearly, the coefficients do not represent 
 probabilities because probabilities must be between 0 and 1. Because of the 
 transformation used for logistic regression the coefficients are on the log-odds
-(or logit) scale. The inverse logit function (plotted below) is used to
-transform real numbers (the x-axis in the plot) to probabilities between 0 and 1
-(the y-axis):
+(or logit) scale. The inverse logit function (plotted below) is used to 
+transform real numbers (the $x$-axis in the plot below) to probabilities between
+0 and 1 (the $y$-axis):
 
 ```{r inv logit function, echo = F}
 (graph_invlogit <- 
@@ -232,20 +229,21 @@ transform real numbers (the x-axis in the plot) to probabilities between 0 and 1
   ggtitle("Inverse Logit Function"))
 ```
 
-As we can see in the plot, larger coefficients (larger x values) mean higher
-probabilities of voting Republican though how much of a difference depends on
-which two points we compare. So it does look like an increase in an individual's
-income is associated with an increase in the probability of voting Republican,
-which supports that idea that the Democrats are the party of the poor.
+As we can see in the plot, larger coefficients (larger $x$ values) correspond to
+higher probabilities of voting Republican, though how much of a difference 
+depends on which two points we compare. So it does look like an increase in an 
+individual's income is associated with an increase in the probability of voting 
+Republican, which lends supports to the idea that the Democrats are the party of
+the poor.
 
 However, the other part of the paradox is that the Democrats are the party of 
-the rich states. In other words, are states with higher average income more 
-likely to vote Democrat on average? We can again use a logistic regression model,
-however instead of using the 2004 Annenberg Survey data we'll be using the
-Census CPS data. Thus, while our state average income level variable will still
-have five categories, we'll divide it so that there are the same number of
-states in each category. The categories are: \$0 - \$39,000, \$39,000 -
-\$43,003, \$43,003 - \$44,476, \$44,476 - \$50,614 and \$50,614+.
+the rich states. In other words, can we say that states with higher average 
+income more likely to vote Democrat on average? We can again use a logistic 
+regression model, however instead of using the 2004 Annenberg Survey data we'll 
+be using the Census CPS data. The predictor for this model will be the state 
+average income level, and we can construct it so that there are the same number 
+of states in each income category. The categories are: \$0 - \$39,000, \$39,000 
+- \$43,003, \$43,003 - \$44,476, \$44,476 - \$50,614 and \$50,614+.
 
 Our model is the same as before so we can reuse the same Stan code and just 
 give Stan the state-level data instead of the individual-level data.
@@ -260,9 +258,8 @@ model2 <- stan(fit = model1, data = stan_2004_state_inc_data,
                model_name = model2_name)
 ```
 
-We'll again summarize the data in the same way as before. Only this time, we'll be doing it using a function instead of looking at the Stanfit object itself.
-
-And now, we'll plot it, but we'll again use a function that's wrapping the code called previously.
+We can create the same plot that we made for the first model to look at the 
+estimates from the new model:
 
 ```{R State Income Plot, fig.width=4, results="hold"}
 plot_data2 <- make_plot_data(model2, coef_nms, stat_nms)
@@ -273,24 +270,22 @@ plot_estimates(plot_data2) +
 # narrower for the coefficients on state average income than individual income.
 ```
 
-In our plot, we see that as income level increases, the coefficients decrease.
-Based on our understanding of the inverse logit function, this means the
-probability of voting Republican decreases as well. 
+We see that as income level increases, the coefficients decrease. Based on our 
+understanding of the inverse logit function, this means the probability of 
+voting Republican decreases as well. 
 
-All in all, we can see that as an individual's income increases, the likelihood
-of voting Republican does so as well, but as a state's average income increases,
-the likelihood of voting Republican goes down. Let's now try to understand the
-paradox.
+So from our two models, we can see that as an _individual's_ income increases,
+the likelihood of voting Republican does so as well, but as a _state's_ average
+income increases, the likelihood of voting Republican goes down. Let's now try
+to understand the paradox.
 
 
 # Understanding this "paradox"
 
-For our first attempt to understand this paradox, what if we treated the state's
-average income level and individual's income level as predictor variables and
-added their effects together? Our outcome is still the same as before so we'll
-use a binomial logistic regression as before. On the other hand, we now have two
-categorical variables. Still, for each variable, we'll compare the outcome of
-one level to those of all other levels. So, let's run the Stan code.
+To get more insight we'll need to add to our models. As a first step, 
+for each respondent we can include their individual income and the average income 
+in their state as predictors. Our outcome is still a binary indicator for voting
+Republican so it makes sense to still use a logistic regression.
 
 ```{r Ind and State Income Stan, results = "hide"}
 # Load the data
@@ -310,7 +305,8 @@ regression coefficients are `b_state_inc2`, `b_state_inc3`, `b_state_inc4`, and
 levels because again, we've set our model to use the lowest level as the
 reference categories for comparisons. However, the intercept now represents the
 effect of the lowest individual income level and lowest state average income
-level on voting Republican.
+level, that is, it is the coefficient for an individual in the lowest income
+category from the state with the lowest average income.
 
 Let's plot these estimates:
 ```{r Ind and State Income Plot}
@@ -350,10 +346,9 @@ to be different for each state.
 And if we can vary the intercept by state, why not also vary the slope
 associated with an individual's income by state? (It doesn't really make sense
 to vary the slope associated with a state's average income by state.) In other
-words, are all individuals with higher income more likely to vote Republican or
-does this vary by state?
+words, does the effect of individual income on voting Republican vary by state?
 
-Let's conduct this analysis. Our outcome will still be the same so we'll still
+For this analysis our outcome will still be the same so we'll still
 use a binomial logistic regression model.
 
 ```{r Ind Income by state Stan, results = "hide"}
